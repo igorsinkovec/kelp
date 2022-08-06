@@ -13,14 +13,11 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/config"
-	"github.com/stellar/kelp/gui/model2"
 	"github.com/stellar/kelp/model"
 	"github.com/stellar/kelp/support/kelpos"
 	"github.com/stellar/kelp/support/utils"
 	"github.com/stellar/kelp/trader"
 )
-
-const buysell = "buysell"
 
 // botInfo is the response from the getBotInfo request
 type botInfo struct {
@@ -86,7 +83,21 @@ func (s *APIServer) runGetBotInfoDirect(w http.ResponseWriter, userData UserData
 		return
 	}
 
-	filenamePair := model2.GetBotFilenames(botName, buysell)
+	ubd := s.kos.BotDataForUser(userData.toUser())
+	botInstance, e := ubd.GetBot(botName)
+	if e != nil {
+		s.writeKelpError(userData, w, makeKelpErrorResponseWrapper(
+			errorTypeBot,
+			botName,
+			time.Now().UTC(),
+			errorLevelError,
+			fmt.Sprintf("error getting bot '%s': %s\n", botName, e),
+		))
+		return
+	}
+	bot := botInstance.Bot
+
+	filenamePair := bot.Filenames()
 	traderFilePath := s.botConfigsPathForUser(userData.ID).Join(filenamePair.Trader)
 	var botConfig trader.BotConfig
 	e = config.Read(traderFilePath.Native(), &botConfig)
@@ -236,7 +247,7 @@ func (s *APIServer) runGetBotInfoDirect(w http.ResponseWriter, userData UserData
 	bi := botInfo{
 		LastUpdated:    time.Now().UTC().Format("1/_2/2006 15:04:05 MST"),
 		TradingAccount: account.AccountID,
-		Strategy:       buysell,
+		Strategy:       bot.Strategy,
 		IsTestnet:      strings.Contains(botConfig.HorizonURL, "test"),
 		TradingPair:    tradingPair,
 		AssetBase:      assetBase,

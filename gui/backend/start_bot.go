@@ -40,7 +40,21 @@ func (s *APIServer) startBot(w http.ResponseWriter, r *http.Request) {
 	}
 	botName := req.BotName
 
-	e = s.doStartBot(req.UserData, botName, "buysell", nil, nil)
+	ubd := s.kos.BotDataForUser(req.UserData.toUser())
+	botInstance, e := ubd.GetBot(botName)
+	if e != nil {
+		s.writeKelpError(req.UserData, w, makeKelpErrorResponseWrapper(
+			errorTypeBot,
+			botName,
+			time.Now().UTC(),
+			errorLevelError,
+			fmt.Sprintf("error getting bot '%s': %s\n", botName, e),
+		))
+		return
+	}
+	bot := botInstance.Bot
+
+	e = s.doStartBot(req.UserData, botName, bot.Strategy, nil, nil)
 	if e != nil {
 		s.writeKelpError(req.UserData, w, makeKelpErrorResponseWrapper(
 			errorTypeBot,

@@ -77,6 +77,8 @@ func (s *APIServer) doListBots(userData UserData) ([]model2.Bot, error) {
 		log.Printf("found bot '%s' with state '%s'\n", bot.Name, botState)
 		// if page is reloaded then bot would already be registered, which is ok -- but we upsert here so it doesn't matter
 		if botState != kelpos.InitState() {
+			// redeclare 'bot' to avoid registering the iteration pointer, which would result in all registered bots to point to the same bot struct
+			bot := bot
 			ubd.RegisterBotWithStateUpsert(&bot, botState)
 		}
 	}
