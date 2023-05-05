@@ -24,6 +24,7 @@ type botConfigResponse struct {
 	Name           string                `json:"name"`
 	Strategy       string                `json:"strategy"`
 	TraderConfig   trader.BotConfig      `json:"trader_config"`
+	// @todo: dynamic strategy
 	StrategyConfig plugins.BuySellConfig `json:"strategy_config"`
 }
 
@@ -45,7 +46,21 @@ func (s *APIServer) getBotConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	botName := req.BotName
 
-	filenamePair := model2.GetBotFilenames(botName, "buysell")
+	ubd := s.kos.BotDataForUser(req.userData.toUser())
+	botInstance, e := ubd.GetBot(botName)
+	if e != nil {
+		s.writeKelpError(req.userData, w, makeKelpErrorResponseWrapper(
+			errorTypeBot,
+			botName,
+			time.Now().UTC(),
+			errorLevelError,
+			fmt.Sprintf("error getting bot '%s': %s\n", botName, e),
+		))
+		return
+	}
+	bot := botInstance.Bot
+
+	filenamePair := bot.Filenames()
 	traderFilePath := s.botConfigsPathForUser(req.UserData.ID).Join(filenamePair.Trader)
 	var botConfig trader.BotConfig
 	e = config.Read(traderFilePath.Native(), &botConfig)
@@ -60,7 +75,9 @@ func (s *APIServer) getBotConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	strategyFilePath := s.botConfigsPathForUser(req.UserData.ID).Join(filenamePair.Strategy)
+	// @todo: dynamic strategy
 	var buysellConfig plugins.BuySellConfig
+	// @todo: dynamic strategy
 	e = config.Read(strategyFilePath.Native(), &buysellConfig)
 	if e != nil {
 		s.writeKelpError(req.UserData, w, makeKelpErrorResponseWrapper(
@@ -75,8 +92,9 @@ func (s *APIServer) getBotConfig(w http.ResponseWriter, r *http.Request) {
 
 	response := botConfigResponse{
 		Name:           botName,
-		Strategy:       "buysell",
+		Strategy:       bot.Strategy,
 		TraderConfig:   botConfig,
+		// @todo: dynamic strategy
 		StrategyConfig: buysellConfig,
 	}
 	jsonBytes, e := json.MarshalIndent(response, "", "  ")

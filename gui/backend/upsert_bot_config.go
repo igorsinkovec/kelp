@@ -33,6 +33,7 @@ type upsertBotConfigRequest struct {
 	Name           string                `json:"name"`
 	Strategy       string                `json:"strategy"`
 	TraderConfig   trader.BotConfig      `json:"trader_config"`
+	// @todo: dynamic strategy
 	StrategyConfig plugins.BuySellConfig `json:"strategy_config"`
 }
 
@@ -134,6 +135,7 @@ func (s *APIServer) validateConfigs(req upsertBotConfigRequest) *upsertBotConfig
 	hasError := false
 	errResp := upsertBotConfigRequest{
 		TraderConfig:   trader.BotConfig{},
+	// @todo: dynamic strategy
 		StrategyConfig: plugins.BuySellConfig{},
 	}
 
