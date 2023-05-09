@@ -157,19 +157,53 @@ func (p *pendulumLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote fl
 	}
 
 	// update it only if there's no error
+	shouldUpdateCursor := lastCursor != p.lastTradeCursor
+	shouldUpdateTradePrice := false;
+
 	if p.isFirstTradeHistoryRun {
-		p.isFirstTradeHistoryRun = false
-		p.lastTradeCursor = lastCursor
-		log.Printf("isFirstTradeHistoryRun so updated lastTradeCursor=%v, leaving unchanged lastTradePrice=%.10f", p.lastTradeCursor, p.lastTradePrice)
-	} else if lastCursor == p.lastTradeCursor {
-		log.Printf("lastCursor == p.lastTradeCursor leaving lastTradeCursor=%v and lastTradePrice=%.10f", p.lastTradeCursor, p.lastTradePrice)
+		shouldUpdateTradePrice = 0 > p.lastTradePrice
 	} else {
+		shouldUpdateTradePrice = lastPrice != p.lastTradePrice
+	}
+
+	if shouldUpdateCursor {
 		p.lastTradeCursor = lastCursor
+		log.Printf("updated lastTradeCursor=%v", p.lastTradeCursor)
+	} else {
+		log.Printf("lastCursor == p.lastTradeCursor leaving lastTradeCursor=%v", p.lastTradeCursor)
+	}
+
+	if shouldUpdateTradePrice {
 		mapKey := model.NumberFromFloat(lastPrice, p.orderConstraints.PricePrecision)
 		printPrice2LastPriceMap()
 		_, p.lastTradePrice = getLastPriceFromMap(price2LastPrice, mapKey.AsFloat(), lastIsBuy)
-		log.Printf("updated lastTradeCursor=%v and lastTradePrice=%.10f (converted=%.10f)", p.lastTradeCursor, lastPrice, p.lastTradePrice)
+		log.Printf("updated lastTradePrice=%.10f (converted=%.10f)", lastPrice, p.lastTradePrice)
+	} else {
+		log.Printf("leaving unchanged lastTradePrice=%.10f", p.lastTradePrice)
 	}
+
+
+
+
+
+	// if p.isFirstTradeHistoryRun {
+	// 	p.isFirstTradeHistoryRun = false
+	// 	p.lastTradeCursor = lastCursor
+	// 	log.Printf("isFirstTradeHistoryRun so updated lastTradeCursor=%v, leaving unchanged lastTradePrice=%.10f", p.lastTradeCursor, p.lastTradePrice)
+	// } else if lastCursor == p.lastTradeCursor {
+	// 	log.Printf("lastCursor == p.lastTradeCursor leaving lastTradeCursor=%v and lastTradePrice=%.10f", p.lastTradeCursor, p.lastTradePrice)
+	// } else {
+	// 	p.lastTradeCursor = lastCursor
+	// 	mapKey := model.NumberFromFloat(lastPrice, p.orderConstraints.PricePrecision)
+	// 	printPrice2LastPriceMap()
+	// 	_, p.lastTradePrice = getLastPriceFromMap(price2LastPrice, mapKey.AsFloat(), lastIsBuy)
+	// 	log.Printf("updated lastTradeCursor=%v and lastTradePrice=%.10f (converted=%.10f)", p.lastTradeCursor, lastPrice, p.lastTradePrice)
+	// }
+
+
+
+
+
 
 	levels := []api.Level{}
 	newPrice := p.lastTradePrice
@@ -223,6 +257,7 @@ func (p *pendulumLevelProvider) GetLevels(maxAssetBase float64, maxAssetQuote fl
 		baseExposed += expectedBaseUsage
 	}
 	printPrice2LastPriceMap()
+	p.isFirstTradeHistoryRun = false
 
 	return levels, nil
 }
